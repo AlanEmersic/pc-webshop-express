@@ -44,6 +44,7 @@ module.exports = function (express, pool, jwt, secret) {
         description: req.body.description,
         serialNumber: req.body.serialNumber,
         categoryId: req.body.categoryId,
+        img: req.body.img,
       };
 
       try {
