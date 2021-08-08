@@ -8,4 +8,5 @@ module.exports = {
     database: "pc-webshop",
   },
   secret: "ayk4yLWJgcayk4yLWJgcay4yLWJgc",
+  dateStrings: true,
 };

@@ -26,7 +26,7 @@ module.exports = function (express, pool, jwt, secret) {
       try {
         let connection = await pool.getConnection();
         let rows = await connection.query(
-          "select price, product.name, brand, description, serialNumber, img, category.name as categoryName from product join category on product.categoryId = category.id;"
+          "select price, product.name, brand, description, serialNumber, img, category.name as categoryName, category.id as categoryId from product join category on product.categoryId = category.id;"
         );
         connection.release();
 
@@ -71,8 +71,8 @@ module.exports = function (express, pool, jwt, secret) {
       try {
         let connection = await pool.getConnection();
         let query = await connection.query(
-          "update product set ? where id = ?;",
-          [product, req.body.id]
+          "update product set price = ? where serialNumber = ?;",
+          [product.price, req.body.serialNumber]
         );
         connection.release();
         res.json({ status: "OK", changedRows: query.changedRows });
@@ -160,13 +160,13 @@ module.exports = function (express, pool, jwt, secret) {
       let queryCustomer = await connection.query(
         "insert into customer set ?;",
         customer
-      );      
+      );
 
       const cart = {
         customerId: queryCustomer.insertId,
       };
 
-      let queryCart = await connection.query("insert into cart set ?;", cart);    
+      let queryCart = await connection.query("insert into cart set ?;", cart);
       connection.release();
       res.json(queryCustomer.insertId);
     } catch (error) {
@@ -178,7 +178,7 @@ module.exports = function (express, pool, jwt, secret) {
     try {
       let connection = await pool.getConnection();
       let rows = await connection.query(
-        "select username, email from customer;"
+        "select id, username, email from customer;"
       );
       connection.release();
 
@@ -195,7 +195,7 @@ module.exports = function (express, pool, jwt, secret) {
       try {
         let connection = await pool.getConnection();
         let rows = await connection.query(
-          "select username, email from customer where username = ?;",
+          "select id, username, email from customer where username = ?;",
           req.params.username
         );
         connection.release();
@@ -289,6 +289,70 @@ module.exports = function (express, pool, jwt, secret) {
         let connection = await pool.getConnection();
         let query = await connection.query(
           "delete from cartitem where id = ?;",
+          req.params.id
+        );
+        connection.release();
+        res.json({ status: "OK", affectedRows: query.affectedRows });
+      } catch (error) {
+        console.log(error);
+      }
+    });
+
+  apiRouter
+    .route("/orders")
+    .get(authenticateToken, async function (req, res) {
+      try {
+        let connection = await pool.getConnection();
+        let rows = await connection.query("select * from orders;");
+        connection.release();
+
+        res.json(rows);
+      } catch (error) {
+        console.log(error);
+        return res.json({ code: 100, status: "Error get orders" });
+      }
+    })
+    .post(authenticateToken, async function (req, res) {
+      const order = {
+        cartId: req.body.cartId,
+        orderDate: req.body.orderDate,
+      };
+
+      try {
+        let connection = await pool.getConnection();
+        let query = await connection.query(`insert into orders set ?;`, order);
+
+        let queryItems = await connection.query(
+          "delete cartitem from cartitem join cart c on cartitem.cartId = c.id where c.id = ?;",
+          order.cartId
+        );
+        connection.release();
+        res.json({ status: "OK", insertId: query.insertId });
+      } catch (error) {
+        console.log(error);
+      }
+    });
+
+  apiRouter
+    .route("/orders/:id")
+    .get(async function (req, res) {
+      try {
+        let connection = await pool.getConnection();
+        let rows = await connection.query(
+          "select customerId, o.id as orderId, orderDate from cart join `orders` o on cart.id = o.cartId where customerId = ?;",
+          req.params.id
+        );
+        connection.release();
+        res.json(rows);
+      } catch (error) {
+        console.log(error);
+      }
+    })
+    .delete(authenticateToken, async function (req, res) {
+      try {
+        let connection = await pool.getConnection();
+        let query = await connection.query(
+          "delete from orders where id = ?;",
           req.params.id
         );
         connection.release();
